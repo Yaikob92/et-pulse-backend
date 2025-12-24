@@ -1,0 +1,21 @@
+import express from "express";
+import {
+  getAllNews,
+  getNewsById,
+  getChannelsPost,
+  likeNews,
+} from "../controllers/newsController";
+import { requireAuth } from "@clerk/express";
+
+const router = express.Router();
+
+// Public routes
+router.get("/", getAllNews);
+router.get("/:newsId", getNewsById);
+router.get("/channel/:channelUsername", getChannelsPost);
+
+// // Protected routes
+router.post("/:newsId/like", requireAuth(), likeNews);
+// router.post('/:id/repost', requireAuth(),  repostNews);
+
+export default router;
