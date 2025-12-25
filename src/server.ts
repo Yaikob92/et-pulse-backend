@@ -21,6 +21,16 @@ app.use(express.json());
 app.use(clerkMiddleware());
 app.use(arcjetMiddleware)
 
+// Database connection middleware to ensure connection on every request (crucial for serverless)
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.use("/api/news", newsRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/comment", commentRoutes);
@@ -33,17 +43,10 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-const startServer = async () => {
-  try {
-    await connectDB();
-    app.listen(PORT, () =>
-      console.log("Server is up and running on PORT:", PORT)
-    );
-  } catch (error: any) {
-    console.error("Failed to start server:", error.message);
-  }
-};
-
-startServer();
+if (process.env.NODE_ENV !== "production") {
+  app.listen(PORT, () =>
+    console.log("Server is up and running on PORT:", PORT)
+  );
+}
 
 export default app;
