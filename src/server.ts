@@ -4,12 +4,12 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-import connectDB from "./config/db";
-import newsRoutes from "./routes/newsRoutes";
-import userRoutes from "./routes/userRoutes";
-import commentRoutes from "./routes/commentRoutes";
+import connectDB from "./config/db.js";
+import newsRoutes from "./routes/newsRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
+import commentRoutes from "./routes/commentRoutes.js";
 import { clerkMiddleware } from "@clerk/express";
-import { arcjetMiddleware } from "./middleware/arcjet.middleware";
+import { arcjetMiddleware } from "./middleware/arcjet.middleware.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;

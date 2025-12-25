@@ -1,14 +1,14 @@
 {
     "compilerOptions": {
         "target": "ES2020",
-        "module": "CommonJS",
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
         "outDir": "./dist",
         "rootDir": "./src",
         "strict": true,
         "esModuleInterop": true,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
-        "moduleResolution": "node",
         "resolveJsonModule": true,
         "baseUrl": ".",
         "paths": {
@@ -23,5 +23,9 @@
     "exclude": [
         "node_modules",
         "**/*.test.ts"
-    ]
+    ],
+    "ts-node": {
+        "esm": true,
+        "experimentalResolver": true
+    }
 }

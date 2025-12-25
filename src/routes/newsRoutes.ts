@@ -5,7 +5,7 @@ import {
   getChannelsPost,
   likeNews,
   repostNews,
-} from "../controllers/newsController";
+} from "../controllers/newsController.js";
 import { requireAuth } from "@clerk/express";
 
 const router = express.Router();

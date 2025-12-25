@@ -1,4 +1,4 @@
-import { aj } from "../config/arcjet";
+import { aj } from "../config/arcjet.js";
 import { NextFunction, Request, Response } from "express";
 import { isSpoofedBot } from "@arcjet/inspect";
 

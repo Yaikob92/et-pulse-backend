@@ -5,7 +5,7 @@ import {
   getUserProfile,
   syncUser,
   updateUserProfile,
-} from "../controllers/userController";
+} from "../controllers/userController.js";
 import { requireAuth } from "@clerk/express";
 
 const router = express.Router();

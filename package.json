@@ -4,14 +4,14 @@
   "description": "",
   "main": "src/server.ts",
   "scripts": {
-    "dev": "nodemon --watch src --exec ts-node src/server.ts",
+    "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "dependencies": {
     "@arcjet/inspect": "^1.0.0-beta.15",
     "@arcjet/node": "^1.0.0-beta.15",
@@ -33,6 +33,7 @@
     "@types/node": "^24.10.4",
     "nodemon": "^3.1.11",
     "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   }
 }
