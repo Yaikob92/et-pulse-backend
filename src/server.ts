@@ -10,19 +10,16 @@ import userRoutes from "./routes/userRoutes";
 import commentRoutes from "./routes/commentRoutes";
 import { clerkMiddleware } from "@clerk/express";
 import { arcjetMiddleware } from "./middleware/arcjet.middleware";
-import { errorHandler } from "./middleware/error.middleware";
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-
-connectDB();
+const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(helmet());
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(clerkMiddleware());
-app.use(arcjetMiddleware);
+app.use(arcjetMiddleware)
 
 app.use("/api/news", newsRoutes);
 app.use("/api/user", userRoutes);
@@ -39,19 +36,12 @@ app.get("/health", (req, res) => {
 const startServer = async () => {
   try {
     await connectDB();
-
-    // listen for local development
-    if (process.env.NODE_ENV !== "production") {
-      app.listen(PORT, () =>
-        console.log("Server is up and running on PORT:", PORT)
-      );
-    }
+    app.listen(PORT, () =>
+      console.log("Server is up and running on PORT:", PORT)
+    );
   } catch (error: any) {
     console.error("Failed to start server:", error.message);
-    process.exit(1);
   }
 };
-startServer();
 
-// export for vercel
-export default app;
+startServer();

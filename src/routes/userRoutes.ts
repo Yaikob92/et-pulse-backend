@@ -17,6 +17,6 @@ router.get("/profile/:username", getUserProfile);
 router.put("/profile", requireAuth(), updateUserProfile);
 router.get("/me", requireAuth(), getCurrentUser);
 router.post("/sync", requireAuth(), syncUser);
-router.post("/follow/:targeNewsId", requireAuth(), followNews);
+router.post("/follow/:newsId", requireAuth(), followNews);
 
 export default router;

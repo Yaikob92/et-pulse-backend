@@ -4,6 +4,7 @@ import {
   getNewsById,
   getChannelsPost,
   likeNews,
+  repostNews,
 } from "../controllers/newsController";
 import { requireAuth } from "@clerk/express";
 
@@ -16,6 +17,6 @@ router.get("/channel/:channelUsername", getChannelsPost);
 
 // // Protected routes
 router.post("/:newsId/like", requireAuth(), likeNews);
-// router.post('/:id/repost', requireAuth(),  repostNews);
+router.post("/:newsId/repost", requireAuth(), repostNews);
 
 export default router;
