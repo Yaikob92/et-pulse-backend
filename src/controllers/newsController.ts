@@ -102,12 +102,12 @@ export const likeNews = async (req: Request, res: Response): Promise<void> => {
     await Interaction.findByIdAndDelete(existingInteraction._id);
     await News.findByIdAndUpdate(newsId, {
       $inc: { likesCount: -1 },
-      $addToSet: { likes: user._id },
+      $pull: { likes: user._id },
     });
 
     res.json({ message: "Unliked" });
   } else {
-    // Like}
+    // Like
     await Interaction.create({
       userId: user._id,
       newsId: newsId,
