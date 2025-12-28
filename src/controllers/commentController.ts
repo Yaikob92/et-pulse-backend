@@ -5,17 +5,22 @@ import Comment from "../models/Comment.js";
 import User from "../models/User.js";
 import News from "../models/News.js";
 
-export const getComments = async (req: Request, res: Response): Promise<void> => {
+export const getComments = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const { newsId } = req.params;
 
   const comments = await Comment.find({ newsId: newsId as any })
     .sort({ createdAt: -1 })
     .populate("userId", "username profilePicture");
   res.status(200).json({ comments });
-}
-  ;
+};
 
-export const addComment = async (req: Request, res: Response): Promise<void> => {
+export const addComment = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const { userId } = getAuth(req);
   const { newsId } = req.params;
   const { content } = req.body;
@@ -73,5 +78,4 @@ export const addComment = async (req: Request, res: Response): Promise<void> => 
     await session.endSession();
   }
   res.status(201).json(comment);
-}
-  ;
+};

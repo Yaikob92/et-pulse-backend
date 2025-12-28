@@ -19,7 +19,7 @@ app.use(helmet());
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(clerkMiddleware());
-app.use(arcjetMiddleware)
+app.use(arcjetMiddleware);
 
 // Database connection middleware to ensure connection on every request (crucial for serverless)
 app.use(async (req, res, next) => {

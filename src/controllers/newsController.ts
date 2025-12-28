@@ -6,7 +6,10 @@ import { getAuth } from "@clerk/express";
 import User from "../models/User.js";
 
 // Get all news with pagination
-export const getAllNews = async (req: Request, res: Response): Promise<void> => {
+export const getAllNews = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
   const limit = Math.min(
     100,
@@ -29,7 +32,10 @@ export const getAllNews = async (req: Request, res: Response): Promise<void> => 
   });
 };
 
-export const getChannelsPost = async (req: Request, res: Response): Promise<void> => {
+export const getChannelsPost = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
   const limit = Math.min(
     100,
@@ -52,7 +58,10 @@ export const getChannelsPost = async (req: Request, res: Response): Promise<void
   });
 };
 
-export const getNewsById = async (req: Request, res: Response): Promise<void> => {
+export const getNewsById = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const { newsId } = req.params;
 
   const news = await News.findById(newsId);
@@ -63,8 +72,7 @@ export const getNewsById = async (req: Request, res: Response): Promise<void> =>
   }
 
   res.json({ news });
-}
-  ;
+};
 
 // Like a news item
 export const likeNews = async (req: Request, res: Response): Promise<void> => {
@@ -92,22 +100,32 @@ export const likeNews = async (req: Request, res: Response): Promise<void> => {
   if (existingInteraction) {
     // Unlike
     await Interaction.findByIdAndDelete(existingInteraction._id);
-    await News.findByIdAndUpdate(newsId, { $inc: { likesCount: -1 } });
+    await News.findByIdAndUpdate(newsId, {
+      $inc: { likesCount: -1 },
+      $addToSet: { likes: user._id },
+    });
+
     res.json({ message: "Unliked" });
   } else {
-    // Like
+    // Like}
     await Interaction.create({
       userId: user._id,
       newsId: newsId,
       type: "like",
     });
+    await News.findByIdAndUpdate(newsId, {
+      $inc: { likesCount: 1 },
+      $addToSet: { likes: user._id },
+    });
     res.json({ message: "Liked" });
   }
-}
-  ;
+};
 
 // Repost a news item
-export const repostNews = async (req: Request, res: Response): Promise<void> => {
+export const repostNews = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const { userId } = getAuth(req);
   const { newsId } = req.params;
 
@@ -144,5 +162,4 @@ export const repostNews = async (req: Request, res: Response): Promise<void> => 
     await News.findByIdAndUpdate(newsId, { $inc: { repostsCount: 1 } });
     res.json({ message: "Reposted" });
   }
-}
-  ;
+};

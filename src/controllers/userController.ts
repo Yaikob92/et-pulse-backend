@@ -3,7 +3,10 @@ import { Request, Response } from "express";
 import { getAuth, clerkClient } from "@clerk/express";
 import News from "../models/News.js";
 
-export const getUserProfile = async (req: Request, res: Response): Promise<void> => {
+export const getUserProfile = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const { username } = req.params;
   const user = await User.findOne({ username });
   if (!user) {
@@ -11,10 +14,12 @@ export const getUserProfile = async (req: Request, res: Response): Promise<void>
     return;
   }
   res.json(user);
-}
-  ;
+};
 
-export const updateUserProfile = async (req: Request, res: Response): Promise<void> => {
+export const updateUserProfile = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const { userId } = getAuth(req);
 
   const user = await User.findOneAndUpdate({ clerkId: userId }, req.body, {
@@ -28,7 +33,10 @@ export const updateUserProfile = async (req: Request, res: Response): Promise<vo
   res.status(200).json({ user });
 };
 
-export const getCurrentUser = async (req: Request, res: Response): Promise<void> => {
+export const getCurrentUser = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const { userId } = getAuth(req);
 
   const user = await User.findOne({ clerkId: userId });
@@ -82,10 +90,12 @@ export const syncUser = async (req: Request, res: Response): Promise<void> => {
       .status(500)
       .json({ message: "Failed to sync user", error: error.message });
   }
-}
-  ;
+};
 
-export const followNews = async (req: Request, res: Response): Promise<void> => {
+export const followNews = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const { userId } = getAuth(req);
   const { newsId } = req.params;
 
@@ -122,5 +132,4 @@ export const followNews = async (req: Request, res: Response): Promise<void> => 
       ? "News channel unfollowed successfully"
       : "News channel followed successfully",
   });
-}
-  ;
+};
