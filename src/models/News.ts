@@ -41,6 +41,12 @@ const newsSchema: Schema = new Schema(
       type: Number,
       default: 0,
     },
+    likes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
     comments: [
       {
         type: mongoose.Schema.Types.ObjectId,
