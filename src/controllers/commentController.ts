@@ -13,7 +13,7 @@ export const getComments = async (
 
   const comments = await Comment.find({ newsId: newsId as any })
     .sort({ createdAt: -1 })
-    .populate("userId", "username profilePicture");
+    .populate("userId", "username firstName lastName profilePicture");
   res.status(200).json({ comments });
 };
 
