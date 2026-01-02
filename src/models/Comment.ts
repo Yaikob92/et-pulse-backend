@@ -27,10 +27,12 @@ const commentSchema: Schema = new Schema(
       required: true,
       trim: true,
     },
-    likes: {
-      type: [{ type: Schema.Types.ObjectId, ref: "User" }],
-      default: [],
-    },
+    likes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
     likesCount: {
       type: Number,
       default: 0,

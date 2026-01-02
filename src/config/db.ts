@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
+import { disconnect } from "process";
 
-const connectDB = async () => {
+export const connectDB = async (): Promise<void> => {
   try {
     if (mongoose.connection.readyState >= 1) return;
 
@@ -16,4 +17,6 @@ const connectDB = async () => {
   }
 };
 
-export default connectDB;
+export const disConnect = async (): Promise<void> => {
+  await mongoose.disconnect();
+};
