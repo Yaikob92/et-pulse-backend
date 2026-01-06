@@ -6,11 +6,7 @@ export interface INews extends Document {
   channelProfilePic?: string;
   content?: string;
   mediaUrl?: string;
-  likesCount: number;
-  commentsCount: number;
-  repostsCount: number;
   likes: mongoose.Schema.Types.ObjectId[];
-
   createdAt: Date;
   updatedAt: Date;
 }
@@ -37,10 +33,7 @@ const newsSchema: Schema = new Schema(
     mediaUrl: {
       type: String,
     },
-    likesCount: {
-      type: Number,
-      default: 0,
-    },
+
     likes: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -53,14 +46,6 @@ const newsSchema: Schema = new Schema(
         ref: "Comment",
       },
     ],
-    commentsCount: {
-      type: Number,
-      default: 0,
-    },
-    repostsCount: {
-      type: Number,
-      default: 0,
-    },
   },
   { timestamps: true }
 );

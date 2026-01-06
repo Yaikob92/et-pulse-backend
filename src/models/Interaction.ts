@@ -1,8 +1,8 @@
 import mongoose, { Document, Schema } from "mongoose";
 
 export interface IInteraction extends Document {
-  userId: mongoose.Types.ObjectId;
-  newsId: mongoose.Types.ObjectId;
+  user: mongoose.Types.ObjectId;
+  news: mongoose.Types.ObjectId;
   type: "like" | "repost";
   createdAt: Date;
   updatedAt: Date;
@@ -10,12 +10,12 @@ export interface IInteraction extends Document {
 
 const interactionSchema: Schema = new Schema(
   {
-    userId: {
+    user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
-    newsId: {
+    news: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "News",
       required: true,
@@ -30,6 +30,6 @@ const interactionSchema: Schema = new Schema(
 );
 
 // Compound index to ensure a user can only like/repost a news item once
-interactionSchema.index({ userId: 1, newsId: 1, type: 1 }, { unique: true });
+interactionSchema.index({ user: 1, news: 1, type: 1 }, { unique: true });
 
 export default mongoose.model<IInteraction>("Interaction", interactionSchema);

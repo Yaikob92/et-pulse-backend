@@ -1,23 +1,22 @@
 import mongoose, { Document, Schema } from "mongoose";
 
 export interface IComment extends Document {
-  userId: mongoose.Schema.Types.ObjectId;
-  newsId: mongoose.Schema.Types.ObjectId;
+  user: mongoose.Schema.Types.ObjectId;
+  news: mongoose.Schema.Types.ObjectId;
   likes: mongoose.Schema.Types.ObjectId[];
   content: string;
-  likesCount: number;
   createdAt: Date;
   updatedAt: Date;
 }
 
 const commentSchema: Schema = new Schema(
   {
-    userId: {
+    user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
-    newsId: {
+    news: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "News",
       required: true,
@@ -33,10 +32,6 @@ const commentSchema: Schema = new Schema(
         ref: "User",
       },
     ],
-    likesCount: {
-      type: Number,
-      default: 0,
-    },
   },
   { timestamps: true }
 );

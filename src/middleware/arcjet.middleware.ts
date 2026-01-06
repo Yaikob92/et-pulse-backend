@@ -14,7 +14,6 @@ export const arcjetMiddleware = async (
     return next();
   }
   const decision = await aj.protect(req, { requested: 5 });
-  console.log("Arcjet decision", decision); //.conclusion
 
   if (decision.isDenied()) {
     if (decision.reason.isRateLimit()) {

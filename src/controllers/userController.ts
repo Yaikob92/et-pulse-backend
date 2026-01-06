@@ -77,7 +77,7 @@ export const syncUser = async (req: Request, res: Response): Promise<void> => {
       email: email,
       firstName: clerkUser.firstName || "",
       lastName: clerkUser.lastName || "",
-      username: email.split("@")[0] + "_" + Date.now(),
+      username: clerkUser.emailAddresses[0].emailAddress.split("@")[0],
       profilePicture: clerkUser.imageUrl || "",
     };
 

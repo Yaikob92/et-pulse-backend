@@ -11,9 +11,9 @@ export const getComments = async (
 ): Promise<void> => {
   const { newsId } = req.params;
 
-  const comments = await Comment.find({ newsId: newsId as any })
+  const comments = await Comment.find({ news: newsId as any })
     .sort({ createdAt: -1 })
-    .populate("userId", "username firstName lastName profilePicture");
+    .populate("user", "username firstName lastName profilePicture");
   res.status(200).json({ comments });
 };
 
@@ -55,8 +55,8 @@ export const addComment = async (
       const comments = await Comment.insertMany(
         [
           {
-            userId: user._id,
-            newsId: new mongoose.Types.ObjectId(newsId),
+            user: user._id,
+            news: newsId,
             content,
           },
         ],
@@ -69,7 +69,6 @@ export const addComment = async (
         newsId,
         {
           $push: { comments: comment._id },
-          $inc: { commentsCount: 1 },
         },
         { session }
       );

@@ -18,6 +18,13 @@ export const getAllNews = async (
   const skip = (page - 1) * limit;
 
   const news = await News.find()
+    .populate({
+      path: "comments",
+      populate: {
+        path: "user",
+        select: "username firstName lastName profilePicture",
+      },
+    })
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit);
@@ -45,6 +52,7 @@ export const getChannelsPost = async (
   const { username } = req.params;
 
   const news = await News.find({ channelUsername: username })
+
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit);
@@ -64,14 +72,19 @@ export const getNewsById = async (
 ): Promise<void> => {
   const { newsId } = req.params;
 
-  const news = await News.findById(newsId);
+  const news = await News.findById(newsId).populate({
+    path: "comments",
+    populate: {
+      path: "user",
+      select: "username firstName lastName profilePicture",
+    },
+  });
 
   if (!news) {
     res.status(404).json({ message: "News not found" });
     return;
   }
-
-  res.json({ news });
+  res.status(200).json({ news });
 };
 
 // Like a news item
@@ -92,8 +105,8 @@ export const likeNews = async (req: Request, res: Response): Promise<void> => {
   }
 
   const existingInteraction = await Interaction.findOne({
-    userId: user._id,
-    newsId: newsId,
+    user: user._id,
+    news: newsId,
     type: "like",
   });
 
@@ -101,7 +114,6 @@ export const likeNews = async (req: Request, res: Response): Promise<void> => {
     // Unlike
     await Interaction.findByIdAndDelete(existingInteraction._id);
     await News.findByIdAndUpdate(newsId, {
-      $inc: { likesCount: -1 },
       $pull: { likes: user._id },
     });
 
@@ -109,12 +121,11 @@ export const likeNews = async (req: Request, res: Response): Promise<void> => {
   } else {
     // Like
     await Interaction.create({
-      userId: user._id,
-      newsId: newsId,
+      user: user._id,
+      news: newsId,
       type: "like",
     });
     await News.findByIdAndUpdate(newsId, {
-      $inc: { likesCount: 1 },
       $addToSet: { likes: user._id },
     });
     res.json({ message: "Liked" });
@@ -142,24 +153,22 @@ export const repostNews = async (
   }
 
   const existingInteraction = await Interaction.findOne({
-    userId: user._id,
-    newsId: newsId,
+    user: user._id,
+    news: newsId,
     type: "repost",
   });
 
   if (existingInteraction) {
     // Un-repost
     await Interaction.findByIdAndDelete(existingInteraction._id);
-    await News.findByIdAndUpdate(newsId, { $inc: { repostsCount: -1 } });
     res.json({ message: "Unreposted" });
   } else {
     // Repost
     await Interaction.create({
-      userId: user._id,
-      newsId: newsId,
+      user: user._id,
+      news: newsId,
       type: "repost",
     });
-    await News.findByIdAndUpdate(newsId, { $inc: { repostsCount: 1 } });
     res.json({ message: "Reposted" });
   }
 };
