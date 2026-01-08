@@ -74,7 +74,7 @@ export const syncUser = async (req: Request, res: Response): Promise<void> => {
 
     const userData = {
       clerkId: userId,
-      email: email,
+      email: clerkUser.emailAddresses[0].emailAddress,
       firstName: clerkUser.firstName || "",
       lastName: clerkUser.lastName || "",
       username: clerkUser.emailAddresses[0].emailAddress.split("@")[0],

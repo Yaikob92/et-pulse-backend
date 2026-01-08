@@ -31,7 +31,7 @@ export const getAllNews = async (
 
   const total = await News.countDocuments();
 
-  res.json({
+  res.status(200).json({
     news,
     currentPage: page,
     totalPages: Math.ceil(total / limit),
@@ -58,7 +58,7 @@ export const getChannelsPost = async (
     .limit(limit);
   const total = await News.countDocuments({ channelUsername: username });
 
-  res.json({
+  res.status(200).json({
     news,
     currentPage: page,
     totalPages: Math.ceil(total / limit),
