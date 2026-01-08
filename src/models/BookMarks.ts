@@ -1,8 +1,8 @@
 import mongoose, { Document, Schema } from "mongoose";
 
 export interface IBookmarks extends Document {
-  user: string;
-  news: string;
+  user: mongoose.Types.ObjectId;
+  news: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -14,7 +14,7 @@ const bookMarksSchema: Schema = new Schema(
       ref: "User",
       required: true,
     },
-    new: {
+    news: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "News",
       required: true,
