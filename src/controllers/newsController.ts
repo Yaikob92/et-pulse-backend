@@ -98,10 +98,29 @@ export const likeNews = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // Validate newsId
+    if (!newsId) {
+      res.status(400).json({ message: "News ID is required" });
+      return;
+    }
+
     // Get MongoDB user from Clerk userId
     const user = await User.findOne({ clerkId: userId });
     if (!user) {
       res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    // Validate user has _id
+    if (!user._id) {
+      res.status(500).json({ message: "User record is invalid" });
+      return;
+    }
+
+    // Verify news exists
+    const news = await News.findById(newsId);
+    if (!news) {
+      res.status(404).json({ message: "News not found" });
       return;
     }
 
