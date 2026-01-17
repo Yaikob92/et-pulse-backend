@@ -89,46 +89,54 @@ export const getNewsById = async (
 
 // Like a news item
 export const likeNews = async (req: Request, res: Response): Promise<void> => {
-  const { userId } = getAuth(req);
-  const { newsId } = req.params;
+  try {
+    const { userId } = getAuth(req);
+    const { newsId } = req.params;
 
-  if (!userId) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
 
-  // Get MongoDB user from Clerk userId
-  const user = await User.findOne({ clerkId: userId });
-  if (!user) {
-    res.status(404).json({ message: "User not found" });
-    return;
-  }
+    // Get MongoDB user from Clerk userId
+    const user = await User.findOne({ clerkId: userId });
+    if (!user) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
 
-  const existingInteraction = await Interaction.findOne({
-    user: user._id,
-    news: newsId,
-    type: "like",
-  });
-
-  if (existingInteraction) {
-    // Unlike
-    await Interaction.findByIdAndDelete(existingInteraction._id);
-    await News.findByIdAndUpdate(newsId, {
-      $pull: { likes: user._id },
-    });
-
-    res.json({ message: "Unliked" });
-  } else {
-    // Like
-    await Interaction.create({
+    const existingInteraction = await Interaction.findOne({
       user: user._id,
       news: newsId,
       type: "like",
     });
-    await News.findByIdAndUpdate(newsId, {
-      $addToSet: { likes: user._id },
+
+    if (existingInteraction) {
+      // Unlike
+      await Interaction.findByIdAndDelete(existingInteraction._id);
+      await News.findByIdAndUpdate(newsId, {
+        $pull: { likes: user._id },
+      });
+
+      res.json({ message: "Unliked" });
+    } else {
+      // Like
+      await Interaction.create({
+        user: user._id,
+        news: newsId,
+        type: "like",
+      });
+      await News.findByIdAndUpdate(newsId, {
+        $addToSet: { likes: user._id },
+      });
+      res.json({ message: "Liked" });
+    }
+  } catch (error: any) {
+    console.error("Error in likeNews:", error);
+    res.status(500).json({
+      message: "Failed to like news",
+      error: error.message
     });
-    res.json({ message: "Liked" });
   }
 };
 
