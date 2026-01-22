@@ -6,7 +6,6 @@ import {
   likeNews,
   repostNews,
 } from "../controllers/newsController.js";
-import { cleanupCorruptedInteractions } from "../controllers/cleanupController.js";
 import { requireAuth } from "@clerk/express";
 
 const router = express.Router();
@@ -19,6 +18,5 @@ router.get("/channel/:username", getChannelsPost);
 // // Protected routes
 router.post("/:newsId/like", requireAuth(), likeNews);
 router.post("/:newsId/repost", requireAuth(), repostNews);
-router.post("/cleanup/interactions", requireAuth(), cleanupCorruptedInteractions);
 
 export default router;

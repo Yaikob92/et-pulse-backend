@@ -1,7 +1,6 @@
 import News from "../models/News.js";
 import { Request, Response } from "express";
 import Interaction from "../models/Interaction.js";
-import Comment from "../models/Comment.js";
 import { getAuth } from "@clerk/express";
 import User from "../models/User.js";
 

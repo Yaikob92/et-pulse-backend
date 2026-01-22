@@ -42,6 +42,7 @@ const userSchema: Schema = new Schema(
       type: String,
       default: "",
     },
+
     location: {
       type: String,
       default: "",

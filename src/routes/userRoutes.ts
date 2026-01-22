@@ -1,22 +1,25 @@
 import express from "express";
 import {
-  followNews,
   getCurrentUser,
-  getUserProfile,
   syncUser,
   updateUserProfile,
+  uploadProfilePicture,
 } from "../controllers/userController.js";
 import { requireAuth } from "@clerk/express";
+import multer from "multer";
 
 const router = express.Router();
-
-// public route
-router.get("/profile/:username", getUserProfile);
+const upload = multer({ storage: multer.memoryStorage() });
 
 // protected routes
 router.put("/profile", requireAuth(), updateUserProfile);
+router.post(
+  "/profile/picture",
+  requireAuth(),
+  upload.single("image"),
+  uploadProfilePicture
+);
 router.get("/me", requireAuth(), getCurrentUser);
 router.post("/sync", requireAuth(), syncUser);
-router.post("/follow/:newsId", requireAuth(), followNews);
 
 export default router;

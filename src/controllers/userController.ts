@@ -2,18 +2,56 @@ import User from "../models/User.js";
 import { Request, Response } from "express";
 import { getAuth, clerkClient } from "@clerk/express";
 import News from "../models/News.js";
+import cloudinary from "../config/cloudinary.js";
 
-export const getUserProfile = async (
-  req: Request,
+interface MulterRequest extends Request {
+  file?: Express.Multer.File;
+}
+
+export const uploadProfilePicture = async (
+  req: MulterRequest,
   res: Response
 ): Promise<void> => {
-  const { username } = req.params;
-  const user = await User.findOne({ username });
-  if (!user) {
-    res.status(404).json({ message: "User not found" });
+  const { userId } = getAuth(req);
+
+  if (!userId) {
+    res.status(401).json({ message: "Unauthorized" });
     return;
   }
-  res.json(user);
+
+  if (!req.file) {
+    res.status(400).json({ message: "No file uploaded" });
+    return;
+  }
+
+  try {
+    // Convert buffer to base64
+    const b64 = Buffer.from(req.file.buffer).toString("base64");
+    const dataURI = "data:" + req.file.mimetype + ";base64," + b64;
+
+    const result = await cloudinary.uploader.upload(dataURI, {
+      folder: "et-pulse/avatars",
+    });
+
+    const user = await User.findOneAndUpdate(
+      { clerkId: userId },
+      { profilePicture: result.secure_url },
+      { new: true }
+    );
+
+    if (!user) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    res.status(200).json({
+      message: "Profile picture updated successfully",
+      user,
+    });
+  } catch (error: any) {
+    console.error("Error uploading profile picture:", error);
+    res.status(500).json({ message: "Upload failed", error: error.message });
+  }
 };
 
 export const updateUserProfile = async (
@@ -21,10 +59,15 @@ export const updateUserProfile = async (
   res: Response
 ): Promise<void> => {
   const { userId } = getAuth(req);
+  const { firstName, lastName } = req.body;
 
-  const user = await User.findOneAndUpdate({ clerkId: userId }, req.body, {
-    new: true,
-  });
+  const user = await User.findOneAndUpdate(
+    { clerkId: userId },
+    { firstName, lastName },
+    {
+      new: true,
+    }
+  );
   if (!user) {
     res.status(404).json({ error: "User not found" });
     return;
@@ -90,46 +133,4 @@ export const syncUser = async (req: Request, res: Response): Promise<void> => {
       .status(500)
       .json({ message: "Failed to sync user", error: error.message });
   }
-};
-
-export const followNews = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  const { userId } = getAuth(req);
-  const { newsId } = req.params;
-
-  if (!userId) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
-
-  const currentUser = await User.findOne({ clerkId: userId });
-  const targetChannel = await News.findById(newsId);
-
-  if (!currentUser || !targetChannel) {
-    res.status(404).json({ message: "User or News not found" });
-    return;
-  }
-
-  const isFollowing = currentUser.following.some(
-    (id) => id.toString() == newsId
-  );
-
-  if (isFollowing) {
-    // unfollow
-    await User.findByIdAndUpdate(currentUser._id, {
-      $pull: { following: newsId },
-    });
-    //follow
-  } else {
-    await User.findByIdAndUpdate(currentUser._id, {
-      $addToSet: { following: newsId },
-    });
-  }
-  res.status(200).json({
-    message: isFollowing
-      ? "News channel unfollowed successfully"
-      : "News channel followed successfully",
-  });
 };
