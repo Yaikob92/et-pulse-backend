@@ -6,7 +6,6 @@ export interface INews extends Document {
   channelProfilePic?: string;
   content?: string;
   mediaUrl?: string;
-  likes: mongoose.Schema.Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -34,12 +33,6 @@ const newsSchema: Schema = new Schema(
       type: String,
     },
 
-    likes: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
     comments: [
       {
         type: mongoose.Schema.Types.ObjectId,

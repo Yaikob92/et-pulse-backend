@@ -78,3 +78,51 @@ export const addComment = async (
   }
   res.status(201).json(comment);
 };
+
+export const likeComment = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { userId } = getAuth(req);
+    const { commentId } = req.params;
+
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    const user = await User.findOne({ clerkId: userId });
+    if (!user) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    const comment = await Comment.findById(commentId);
+    if (!comment) {
+      res.status(404).json({ message: "Comment not found" });
+      return;
+    }
+
+    const index = comment.likes.findIndex(
+      (id) => id.toString() === user._id.toString()
+    );
+
+    if (index === -1) {
+      // Like
+      comment.likes.push(user._id as any);
+    } else {
+      // Unlike
+      comment.likes.splice(index, 1);
+    }
+
+    await comment.save();
+
+    res.status(200).json({
+      message: index === -1 ? "Liked" : "Unliked",
+      likesCount: comment.likes.length,
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
