@@ -59,8 +59,7 @@ export const getAllNews = async (
         likesCount: { $size: "$likes" },
         isLiked: userObjectId
           ? { $in: [userObjectId, "$likes.user"] }
-          : false,
-        likesDebug: "$likes" // Keep this temporary for debugging if possible
+          : false
       },
     },
     { $project: { likes: 0 } },
@@ -140,7 +139,7 @@ export const getChannelsPost = async (
         likesCount: { $size: "$likes" },
         isLiked: userObjectId
           ? { $in: [userObjectId, "$likes.user"] }
-          : false,
+          : false
       },
     },
     { $project: { likes: 0 } },
@@ -215,42 +214,34 @@ export const likeNews = async (req: Request, res: Response): Promise<void> => {
     const { userId } = getAuth(req);
     const { newsId } = req.params;
 
-    console.log("likeNews called:", { userId, newsId, params: req.params });
-
     if (!userId) {
-      console.log("No userId found, returning 401");
+
       res.status(401).json({ message: "Unauthorized" });
       return;
     }
 
     // Validate newsId
     if (!newsId) {
-      console.log("No newsId found, returning 400");
       res.status(400).json({ message: "News ID is required" });
       return;
     }
 
     // Get MongoDB user from Clerk userId
     const user = await User.findOne({ clerkId: userId });
-    console.log("User lookup result:", { clerkId: userId, foundUser: !!user, userId: user?._id });
 
     if (!user) {
-      console.log("User not found in database, returning 404");
       res.status(404).json({ message: "User not found" });
       return;
     }
 
     // Validate user has _id
     if (!user._id) {
-      console.log("User record has no _id, returning 500");
       res.status(500).json({ message: "User record is invalid" });
       return;
     }
 
     // Verify news exists
     const news = await News.findById(newsId);
-    console.log("News lookup result:", { newsId, foundNews: !!news });
-
     if (!news) {
       console.log("News not found, returning 404");
       res.status(404).json({ message: "News not found" });
@@ -263,17 +254,14 @@ export const likeNews = async (req: Request, res: Response): Promise<void> => {
       type: "like",
     });
 
-    console.log("Existing interaction:", { exists: !!existingInteraction });
-
     if (existingInteraction) {
       // Unlike
-      console.log("Unliking news:", { userId: user._id, newsId });
       await Interaction.findByIdAndDelete(existingInteraction._id);
 
       res.json({ message: "Unliked" });
     } else {
       // Like
-      console.log("Liking news - creating interaction:", { userId: user._id, newsId, type: "like" });
+
       await Interaction.create({
         user: user._id,
         news: newsId,
@@ -282,7 +270,7 @@ export const likeNews = async (req: Request, res: Response): Promise<void> => {
       res.json({ message: "Liked" });
     }
   } catch (error: any) {
-    console.error("Error in likeNews:", error);
+
     console.error("Error details:", {
       message: error.message,
       code: error.code,

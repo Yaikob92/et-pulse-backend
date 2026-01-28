@@ -23,4 +23,6 @@ const bookMarksSchema: Schema = new Schema(
   { timestamps: true }
 );
 
+bookMarksSchema.index({ user: 1, news: 1 }, { unique: true });
+
 export default mongoose.model<IBookmarks>("Bookmarks", bookMarksSchema);

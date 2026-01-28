@@ -12,8 +12,8 @@ const router = express.Router();
 
 // Public routes
 router.get("/", getAllNews);
-router.get("/:newsId", getNewsById);
 router.get("/channel/:username", getChannelsPost);
+router.get("/:newsId", getNewsById);
 
 // // Protected routes
 router.post("/:newsId/like", requireAuth(), likeNews);
