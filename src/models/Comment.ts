@@ -5,6 +5,7 @@ export interface IComment extends Document {
   news: mongoose.Schema.Types.ObjectId;
   likes: mongoose.Schema.Types.ObjectId[];
   content: string;
+  status: 'visible' | 'hidden' | 'flagged';
   parentComment?: mongoose.Schema.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -26,6 +27,11 @@ const commentSchema: Schema = new Schema(
       type: String,
       required: true,
       trim: true,
+    },
+    status: {
+      type: String,
+      enum: ['visible', 'hidden', 'flagged'],
+      default: 'visible',
     },
     likes: [
       {

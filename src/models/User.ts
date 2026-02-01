@@ -9,6 +9,11 @@ export interface IUser extends Document {
   profilePicture?: string;
   location?: string;
   following: mongoose.Types.ObjectId[];
+  role: 'admin' | 'writer' | 'editor' | 'user';
+  status: 'active' | 'banned' | 'suspended';
+  isVerified: boolean;
+  totalPosts: number;
+  lastLogin: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -46,6 +51,27 @@ const userSchema: Schema = new Schema(
     location: {
       type: String,
       default: "",
+    },
+    role: {
+      type: String,
+      enum: ['admin', 'writer', 'editor', 'user'],
+      default: 'user',
+    },
+    status: {
+      type: String,
+      enum: ['active', 'banned', 'suspended'],
+      default: 'active',
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    totalPosts: {
+      type: Number,
+      default: 0,
+    },
+    lastLogin: {
+      type: Date,
     },
     following: [
       {

@@ -9,6 +9,7 @@ import newsRoutes from "./routes/newsRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import commentRoutes from "./routes/commentRoutes.js";
 import bookMarkRoutes from "./routes/bookMarkRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 import { clerkMiddleware } from "@clerk/express";
 import { arcjetMiddleware } from "./middleware/arcjet.middleware.js";
 import { Server } from "http";
@@ -27,6 +28,7 @@ app.use("/api/news", bookMarkRoutes);
 app.use("/api/news", newsRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/comment", commentRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.get("/", (req, res) => {
   res.send("ET News Backend API Running");
