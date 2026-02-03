@@ -46,13 +46,18 @@ const deleteUserFromDB = inngest.createFunction(
     { id: "delete-user-from-db" },
     { event: "clerk/user.deleted" },
     async ({ event }) => {
+        console.log(`🔔 Inngest function triggered: delete-user-from-db`);
+        console.log(`👤 User to delete - Clerk ID: ${event.data.id}`);
+
         await connectDB();
         const { id } = event.data;
         try {
+            console.log(`🗑️  Starting deletion process for user: ${id}`);
             await deleteUserRelatedData(id);
-            console.log(`User deleted via Inngest: ${id}`);
+            console.log(`✅ User deleted successfully via Inngest: ${id}`);
         } catch (error) {
-            console.error(`Failed to delete user via Inngest ${id}:`, error);
+            console.error(`❌ Failed to delete user via Inngest ${id}:`, error);
+            throw error; // Re-throw to let Inngest handle retries
         }
     },
 );

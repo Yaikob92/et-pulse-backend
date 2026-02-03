@@ -52,6 +52,8 @@ export const handleWebhook = async (req: Request, res: Response) => {
 
     // Handle the event
     const eventType = evt.type;
+    console.log(`📥 Webhook received: ${eventType}`);
+    console.log(`📋 Event data:`, JSON.stringify(evt.data, null, 2));
 
     try {
         await inngest.send({
@@ -59,12 +61,13 @@ export const handleWebhook = async (req: Request, res: Response) => {
             data: evt.data,
         });
 
+        console.log(`✅ Event sent to Inngest: clerk/${eventType}`);
         return res.status(200).json({
             success: true,
             message: "Webhook received and event sent to Inngest",
         });
     } catch (error) {
-        console.error("Error sending event to Inngest:", error);
+        console.error("❌ Error sending event to Inngest:", error);
         return res.status(500).json({ success: false, message: "Error processing webhook" });
     }
 
