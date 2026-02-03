@@ -17,6 +17,7 @@
     "@arcjet/node": "^1.0.0-beta.15",
     "@clerk/clerk-sdk-node": "^4.13.23",
     "@clerk/express": "^1.7.60",
+    "body-parser": "^2.2.2",
     "cloudinary": "^2.8.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
@@ -24,11 +25,14 @@
     "express-async-handler": "^1.2.0",
     "express-validator": "^7.3.1",
     "helmet": "^8.1.0",
+    "inngest": "^3.52.0",
     "mongoose": "^9.0.2",
     "morgan": "^1.10.1",
-    "multer": "^2.0.2"
+    "multer": "^2.0.2",
+    "svix": "^1.85.0"
   },
   "devDependencies": {
+    "@types/body-parser": "^1.19.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/morgan": "^1.9.10",

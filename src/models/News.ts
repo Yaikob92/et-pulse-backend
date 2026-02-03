@@ -92,10 +92,9 @@ const newsSchema: Schema = new Schema(
     status: {
       type: String,
       enum: ['draft', 'pending', 'published', 'rejected'],
-      default: 'published', // Default to published for Telegram compatibility
+      default: 'published',
     },
 
-    // Analytics
     views: {
       type: Number,
       default: 0,
@@ -121,12 +120,6 @@ const newsSchema: Schema = new Schema(
       default: Date.now,
     },
 
-    // Virtual or ref for comments (kept from original, though array specific might not be scalable for millions, virtual is better)
-    // Keeping original array for backward compatibility if it was used, BUT original file had:
-    // comments: [{ type: mongoose.Schema.Types.ObjectId, ref: "Comment" }]
-    // For scalability, it is better NOT to store array of IDs on the parent.
-    // I will comment it out or deprecate it, preferring virtual population.
-    // But to match current logic:
     comments: [
       {
         type: mongoose.Schema.Types.ObjectId,

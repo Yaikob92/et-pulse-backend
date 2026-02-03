@@ -1,12 +1,12 @@
 import mongoose, { Document, Schema } from "mongoose";
 
 export interface IComment extends Document {
-  user: mongoose.Schema.Types.ObjectId;
-  news: mongoose.Schema.Types.ObjectId;
-  likes: mongoose.Schema.Types.ObjectId[];
+  user: mongoose.Types.ObjectId;
+  news: mongoose.Types.ObjectId;
+  likes: mongoose.Types.ObjectId[];
   content: string;
   status: 'visible' | 'hidden' | 'flagged';
-  parentComment?: mongoose.Schema.Types.ObjectId;
+  parentComment?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -31,6 +31,7 @@ export const uploadProfilePicture = async (
 
     const result = await cloudinary.uploader.upload(dataURI, {
       folder: "et-pulse/avatars",
+      resource_type: "image",
     });
 
     const user = await User.findOneAndUpdate(

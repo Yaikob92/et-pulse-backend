@@ -10,8 +10,11 @@ import userRoutes from "./routes/userRoutes.js";
 import commentRoutes from "./routes/commentRoutes.js";
 import bookMarkRoutes from "./routes/bookMarkRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import webhookRoutes from "./routes/webhookRoutes.js";
 import { clerkMiddleware } from "@clerk/express";
 import { arcjetMiddleware } from "./middleware/arcjet.middleware.js";
+import { serve } from "inngest/express";
+import { inngest, functions } from "./config/inngest.js";
 import { Server } from "http";
 
 const app = express();
@@ -20,15 +23,22 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(helmet());
 app.use(morgan("dev"));
-app.use(express.json());
+app.use(express.json({
+  verify: (req: any, res: any, buf: Buffer) => {
+    req.rawBody = buf.toString();
+  }
+}));
 app.use(clerkMiddleware());
 app.use(arcjetMiddleware);
+
+app.use("/api/inngest", serve({ client: inngest, functions }));
 
 app.use("/api/news", bookMarkRoutes);
 app.use("/api/news", newsRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/comment", commentRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/webhooks", webhookRoutes);
 
 app.get("/", (req, res) => {
   res.send("ET News Backend API Running");
