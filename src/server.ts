@@ -31,6 +31,15 @@ app.use(express.json({
 app.use(clerkMiddleware());
 app.use(arcjetMiddleware);
 
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.use("/api/inngest", serve({ client: inngest, functions }));
 
 app.use("/api/news", bookMarkRoutes);
