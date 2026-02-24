@@ -140,3 +140,39 @@ export const resolveReport = async (req: Request, res: Response) => {
         res.status(500).json({ error: "Failed to resolve report" });
     }
 }
+
+// --- News Management ---
+export const createNews = async (req: Request, res: Response) => {
+    try {
+        const { title, summary, content, category, coverImage, tags } = req.body;
+        const currentUser = (req as any).currentUser;
+
+        // Generate slug from title
+        const slug = title
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/(^-|-$)+/g, '');
+
+        const news = new News({
+            title,
+            slug,
+            summary,
+            content,
+            category,
+            coverImage,
+            tags,
+            author: currentUser._id,
+            status: 'published',
+            publishedAt: new Date()
+        });
+
+        await news.save();
+        res.status(201).json(news);
+    } catch (error: any) {
+        console.error("News creation error:", error);
+        if (error.code === 11000) {
+            return res.status(400).json({ error: "A news article with this title (slug) already exists." });
+        }
+        res.status(500).json({ error: "Failed to create news" });
+    }
+};

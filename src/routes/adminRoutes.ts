@@ -7,7 +7,8 @@ import {
     updateUserRole,
     banUser,
     getReports,
-    resolveReport
+    resolveReport,
+    createNews
 } from "../controllers/adminController.js";
 
 const router = express.Router();
@@ -27,5 +28,8 @@ router.put("/users/:userId/status", banUser);
 // Moderation
 router.get("/reports", getReports);
 router.put("/reports/:reportId", resolveReport);
+
+// News
+router.post("/news", createNews);
 
 export default router;

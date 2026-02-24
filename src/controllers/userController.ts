@@ -116,12 +116,18 @@ export const syncUser = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    let username = clerkUser.emailAddresses[0].emailAddress.split("@")[0];
+    const existingUsername = await User.findOne({ username });
+    if (existingUsername) {
+      username = `${username}_${Math.floor(Math.random() * 1000)}`;
+    }
+
     const userData = {
       clerkId: userId,
       email: clerkUser.emailAddresses[0].emailAddress,
       firstName: clerkUser.firstName || "",
       lastName: clerkUser.lastName || "",
-      username: clerkUser.emailAddresses[0].emailAddress.split("@")[0],
+      username: username,
       profilePicture: clerkUser.imageUrl || "",
     };
 
