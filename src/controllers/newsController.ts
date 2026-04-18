@@ -32,6 +32,17 @@ export const getAllNews = async (
   }
 
   const news = await News.aggregate([
+    {
+      $addFields: {
+        content: { $ifNull: ["$content", "$metadata.news_text"] },
+        channelUsername: { $ifNull: ["$channelUsername", "$channel.username"] },
+        channelProfilePic: { $ifNull: ["$channelProfilePic", "$channel.channel_profile_picture"] },
+        mediaUrl: { $ifNull: ["$mediaUrl", "$channel.media_url"] },
+        telegramId: { $ifNull: ["$telegramId", { $toString: "$message_id" }] },
+        createdAt: { $ifNull: ["$createdAt", { $toDate: "$channel.date" }] },
+        views: { $ifNull: ["$views", "$metadata.views", 0] }
+      }
+    },
     { $sort: { createdAt: -1 } },
     { $skip: skip },
     { $limit: limit },
@@ -111,7 +122,25 @@ export const getChannelsPost = async (
   }
 
   const news = await News.aggregate([
-    { $match: { channelUsername: username } },
+    { 
+      $match: { 
+        $or: [
+          { channelUsername: username },
+          { "channel.username": username }
+        ]
+      } 
+    },
+    {
+      $addFields: {
+        content: { $ifNull: ["$content", "$metadata.news_text"] },
+        channelUsername: { $ifNull: ["$channelUsername", "$channel.username"] },
+        channelProfilePic: { $ifNull: ["$channelProfilePic", "$channel.channel_profile_picture"] },
+        mediaUrl: { $ifNull: ["$mediaUrl", "$channel.media_url"] },
+        telegramId: { $ifNull: ["$telegramId", { $toString: "$message_id" }] },
+        createdAt: { $ifNull: ["$createdAt", { $toDate: "$channel.date" }] },
+        views: { $ifNull: ["$views", "$metadata.views", 0] }
+      }
+    },
     { $sort: { createdAt: -1 } },
     { $skip: skip },
     { $limit: limit },
@@ -145,7 +174,12 @@ export const getChannelsPost = async (
     { $project: { likes: 0 } },
   ]);
 
-  const total = await News.countDocuments({ channelUsername: username });
+  const total = await News.countDocuments({ 
+    $or: [
+      { channelUsername: username },
+      { "channel.username": username }
+    ]
+  });
 
   res.status(200).json({
     news,
@@ -199,12 +233,22 @@ export const getNewsById = async (
     isLiked = !!interaction;
   }
 
+  const newsObj = news.toObject() as any;
+  const normalizedNews = {
+    ...newsObj,
+    content: newsObj.content || newsObj.metadata?.news_text,
+    channelUsername: newsObj.channelUsername || newsObj.channel?.username,
+    channelProfilePic: newsObj.channelProfilePic || newsObj.channel?.channel_profile_picture,
+    mediaUrl: newsObj.mediaUrl || newsObj.channel?.media_url,
+    telegramId: newsObj.telegramId || (newsObj.message_id ? newsObj.message_id.toString() : undefined),
+    createdAt: newsObj.createdAt || (newsObj.channel?.date ? new Date(newsObj.channel.date) : undefined),
+    views: newsObj.views || newsObj.metadata?.views || 0,
+    likesCount,
+    isLiked,
+  };
+
   res.status(200).json({
-    news: {
-      ...news.toObject(),
-      likesCount,
-      isLiked,
-    },
+    news: normalizedNews,
   });
 };
 

@@ -127,7 +127,10 @@ const newsSchema: Schema = new Schema(
       },
     ],
   },
-  { timestamps: true }
+  { 
+    timestamps: true,
+    strict: false // Allow scraped telegram fields that don't match the schema
+  }
 );
 
 // Index for performant querying

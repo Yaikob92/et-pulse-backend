@@ -15,10 +15,16 @@ export const getDashboardStats = async (req: Request, res: Response) => {
         // Aggregate views/likes from News
         const engagement = await News.aggregate([
             {
+                $addFields: {
+                    normViews: { $ifNull: ["$views", "$metadata.views", 0] },
+                    normLikes: { $ifNull: ["$likes", "$channel.likes", "$channel.like_count", 0] }
+                }
+            },
+            {
                 $group: {
                     _id: null,
-                    totalViews: { $sum: "$views" },
-                    totalLikes: { $sum: "$likes" }
+                    totalViews: { $sum: "$normViews" },
+                    totalLikes: { $sum: "$normLikes" }
                 }
             }
         ]);

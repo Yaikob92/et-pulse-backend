@@ -26,7 +26,26 @@ export const getBookMark = async (
     .sort({
       createdAt: -1,
     });
-  res.status(200).json({ bookMarks });
+
+  const normalizedBookMarks = bookMarks.map((bm: any) => {
+    if (!bm.news) return bm;
+    const newsObj = bm.news.toObject ? bm.news.toObject() : bm.news;
+    return {
+      ...bm.toObject(),
+      news: {
+        ...newsObj,
+        content: newsObj.content || newsObj.metadata?.news_text,
+        channelUsername: newsObj.channelUsername || newsObj.channel?.username,
+        channelProfilePic: newsObj.channelProfilePic || newsObj.channel?.channel_profile_picture,
+        mediaUrl: newsObj.mediaUrl || newsObj.channel?.media_url,
+        telegramId: newsObj.telegramId || (newsObj.message_id ? newsObj.message_id.toString() : undefined),
+        createdAt: newsObj.createdAt || (newsObj.channel?.date ? new Date(newsObj.channel.date) : undefined),
+        views: newsObj.views || newsObj.metadata?.views || 0,
+      }
+    };
+  });
+
+  res.status(200).json({ bookMarks: normalizedBookMarks });
 };
 
 export const saveNews = async (req: Request, res: Response): Promise<void> => {
