@@ -12,19 +12,13 @@ export const getDashboardStats = async (req: Request, res: Response) => {
         const totalComments = await Comment.countDocuments();
         const totalReports = await Report.countDocuments({ status: "pending" });
 
-        // Aggregate views/likes from News
+        // Aggregate views/likes from News — fields are now flat
         const engagement = await News.aggregate([
-            {
-                $addFields: {
-                    normViews: { $ifNull: ["$views", "$metadata.views", 0] },
-                    normLikes: { $ifNull: ["$likes", "$channel.likes", "$channel.like_count", 0] }
-                }
-            },
             {
                 $group: {
                     _id: null,
-                    totalViews: { $sum: "$normViews" },
-                    totalLikes: { $sum: "$normLikes" }
+                    totalViews: { $sum: "$views" },
+                    totalLikes: { $sum: "$likesCount" },
                 }
             }
         ]);
@@ -43,7 +37,6 @@ export const getDashboardStats = async (req: Request, res: Response) => {
 };
 
 export const getChartData = async (req: Request, res: Response) => {
-    // Example: Last 7 days user signups
     try {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -82,7 +75,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
         }
 
         const users = await User.find(query)
-            .select("-clerkId") // Exclude sensitive info if any
+            .select("-clerkId")
             .sort({ createdAt: -1 })
             .skip((page - 1) * limit)
             .limit(limit);
@@ -114,7 +107,7 @@ export const updateUserRole = async (req: Request, res: Response) => {
 export const banUser = async (req: Request, res: Response) => {
     try {
         const { userId } = req.params;
-        const { status } = req.body; // active, banned, suspended
+        const { status } = req.body;
 
         const user = await User.findByIdAndUpdate(userId, { status }, { new: true });
         res.json(user);
@@ -168,6 +161,7 @@ export const createNews = async (req: Request, res: Response) => {
             coverImage,
             tags,
             author: currentUser._id,
+            source: 'cms',
             status: 'published',
             publishedAt: new Date()
         });

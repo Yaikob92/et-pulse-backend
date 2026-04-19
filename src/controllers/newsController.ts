@@ -5,251 +5,246 @@ import { getAuth } from "@clerk/express";
 import User from "../models/User.js";
 import mongoose from "mongoose";
 
-// Get all news with pagination
+// Get all news with pagination, filtering, and search
 export const getAllNews = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const page = Math.max(1, parseInt(req.query.page as string) || 1);
-  const limit = Math.min(
-    100,
-    Math.max(1, parseInt(req.query.limit as string) || 10)
-  );
-  const skip = (page - 1) * limit;
+  try {
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(
+      100,
+      Math.max(1, parseInt(req.query.limit as string) || 10)
+    );
+    const skip = (page - 1) * limit;
+    const category = req.query.category as string;
+    const search = req.query.search as string;
 
-  const { userId } = getAuth(req);
-  let userObjectId: mongoose.Types.ObjectId | null = null;
-  const collectionName = Interaction.collection.name;
+    const { userId } = getAuth(req);
+    let userObjectId: mongoose.Types.ObjectId | null = null;
+    const collectionName = Interaction.collection.name;
 
-  console.log("getAllNews called:", { userId, collectionName });
-
-  if (userId) {
-    const user = await User.findOne({ clerkId: userId });
-    if (user) {
-      userObjectId = user._id as mongoose.Types.ObjectId;
-      console.log("Found userObjectId:", userObjectId);
-    }
-  }
-
-  const news = await News.aggregate([
-    {
-      $addFields: {
-        content: { $ifNull: ["$content", "$metadata.news_text"] },
-        channelUsername: { $ifNull: ["$channelUsername", "$channel.username"] },
-        channelProfilePic: { $ifNull: ["$channelProfilePic", "$channel.channel_profile_picture"] },
-        mediaUrl: { $ifNull: ["$mediaUrl", "$channel.media_url"] },
-        telegramId: { $ifNull: ["$telegramId", { $toString: "$message_id" }] },
-        createdAt: { $ifNull: ["$createdAt", { $toDate: "$channel.date" }] },
-        views: { $ifNull: ["$views", "$metadata.views", 0] }
+    if (userId) {
+      const user = await User.findOne({ clerkId: userId });
+      if (user) {
+        userObjectId = user._id as mongoose.Types.ObjectId;
       }
-    },
-    { $sort: { createdAt: -1 } },
-    { $skip: skip },
-    { $limit: limit },
-    {
-      $lookup: {
-        from: collectionName,
-        let: { newsId: "$_id" },
-        pipeline: [
-          {
-            $match: {
-              $expr: {
-                $and: [
-                  { $eq: ["$news", "$$newsId"] },
-                  { $eq: ["$type", "like"] },
-                ],
+    }
+
+    // Build match filter
+    const matchFilter: any = {};
+    if (category && category !== "All") {
+      matchFilter.category = category;
+    }
+    if (search) {
+      matchFilter.$text = { $search: search };
+    }
+
+    const pipeline: any[] = [];
+
+    // Match filter (category/search)
+    if (Object.keys(matchFilter).length > 0) {
+      pipeline.push({ $match: matchFilter });
+    }
+
+    pipeline.push(
+      { $sort: { publishedAt: -1, createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+      // Lookup likes from Interaction collection
+      {
+        $lookup: {
+          from: collectionName,
+          let: { newsId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$news", "$$newsId"] },
+                    { $eq: ["$type", "like"] },
+                  ],
+                },
               },
             },
-          },
-        ],
-        as: "likes",
+          ],
+          as: "likeInteractions",
+        },
       },
-    },
-    {
-      $addFields: {
-        likesCount: { $size: "$likes" },
-        isLiked: userObjectId
-          ? { $in: [userObjectId, "$likes.user"] }
-          : false
+      {
+        $addFields: {
+          likesCount: { $size: "$likeInteractions" },
+          isLiked: userObjectId
+            ? { $in: [userObjectId, "$likeInteractions.user"] }
+            : false,
+        },
       },
-    },
-    { $project: { likes: 0 } },
-  ]);
+      { $project: { likeInteractions: 0, rawText: 0 } }
+    );
 
-  if (news.length > 0) {
-    console.log("Sample isLiked results:", news.slice(0, 3).map(n => ({ id: n._id, isLiked: n.isLiked, likesCount: n.likesCount })));
+    const news = await News.aggregate(pipeline);
+
+    const populatedNews = await News.populate(news, {
+      path: "comments",
+      populate: {
+        path: "user",
+        select: "username firstName lastName profilePicture",
+      },
+    });
+
+    const total = Object.keys(matchFilter).length > 0
+      ? await News.countDocuments(matchFilter)
+      : await News.estimatedDocumentCount();
+
+    res.status(200).json({
+      news: populatedNews,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+      totalNews: total,
+    });
+  } catch (error: any) {
+    console.error("Error fetching news:", error.message);
+    res.status(500).json({ message: "Failed to fetch news", error: error.message });
   }
-
-  const populatedNews = await News.populate(news, {
-    path: "comments",
-    populate: {
-      path: "user",
-      select: "username firstName lastName profilePicture",
-    },
-  });
-
-  const total = await News.countDocuments();
-
-  res.status(200).json({
-    news: populatedNews,
-    currentPage: page,
-    totalPages: Math.ceil(total / limit),
-    totalNews: total,
-  });
 };
 
 export const getChannelsPost = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const page = Math.max(1, parseInt(req.query.page as string) || 1);
-  const limit = Math.min(
-    100,
-    Math.max(1, parseInt(req.query.limit as string) || 10)
-  );
-  const skip = (page - 1) * limit;
-  const { username } = req.params;
-  const collectionName = Interaction.collection.name;
+  try {
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(
+      100,
+      Math.max(1, parseInt(req.query.limit as string) || 10)
+    );
+    const skip = (page - 1) * limit;
+    const { username } = req.params;
+    const collectionName = Interaction.collection.name;
 
-  const { userId } = getAuth(req);
-  let userObjectId: mongoose.Types.ObjectId | null = null;
+    const { userId } = getAuth(req);
+    let userObjectId: mongoose.Types.ObjectId | null = null;
 
-  if (userId) {
-    const user = await User.findOne({ clerkId: userId });
-    if (user) {
-      userObjectId = user._id as mongoose.Types.ObjectId;
-    }
-  }
-
-  const news = await News.aggregate([
-    { 
-      $match: { 
-        $or: [
-          { channelUsername: username },
-          { "channel.username": username }
-        ]
-      } 
-    },
-    {
-      $addFields: {
-        content: { $ifNull: ["$content", "$metadata.news_text"] },
-        channelUsername: { $ifNull: ["$channelUsername", "$channel.username"] },
-        channelProfilePic: { $ifNull: ["$channelProfilePic", "$channel.channel_profile_picture"] },
-        mediaUrl: { $ifNull: ["$mediaUrl", "$channel.media_url"] },
-        telegramId: { $ifNull: ["$telegramId", { $toString: "$message_id" }] },
-        createdAt: { $ifNull: ["$createdAt", { $toDate: "$channel.date" }] },
-        views: { $ifNull: ["$views", "$metadata.views", 0] }
+    if (userId) {
+      const user = await User.findOne({ clerkId: userId });
+      if (user) {
+        userObjectId = user._id as mongoose.Types.ObjectId;
       }
-    },
-    { $sort: { createdAt: -1 } },
-    { $skip: skip },
-    { $limit: limit },
-    {
-      $lookup: {
-        from: collectionName,
-        let: { newsId: "$_id" },
-        pipeline: [
-          {
-            $match: {
-              $expr: {
-                $and: [
-                  { $eq: ["$news", "$$newsId"] },
-                  { $eq: ["$type", "like"] },
-                ],
+    }
+
+    const news = await News.aggregate([
+      { $match: { channelUsername: username } },
+      { $sort: { publishedAt: -1, createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: collectionName,
+          let: { newsId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$news", "$$newsId"] },
+                    { $eq: ["$type", "like"] },
+                  ],
+                },
               },
             },
-          },
-        ],
-        as: "likes",
+          ],
+          as: "likeInteractions",
+        },
       },
-    },
-    {
-      $addFields: {
-        likesCount: { $size: "$likes" },
-        isLiked: userObjectId
-          ? { $in: [userObjectId, "$likes.user"] }
-          : false
+      {
+        $addFields: {
+          likesCount: { $size: "$likeInteractions" },
+          isLiked: userObjectId
+            ? { $in: [userObjectId, "$likeInteractions.user"] }
+            : false,
+        },
       },
-    },
-    { $project: { likes: 0 } },
-  ]);
+      { $project: { likeInteractions: 0, rawText: 0 } },
+    ]);
 
-  const total = await News.countDocuments({ 
-    $or: [
-      { channelUsername: username },
-      { "channel.username": username }
-    ]
-  });
+    const total = await News.countDocuments({ channelUsername: username });
 
-  res.status(200).json({
-    news,
-    currentPage: page,
-    totalPages: Math.ceil(total / limit),
-    totalNews: total,
-  });
+    res.status(200).json({
+      news,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+      totalNews: total,
+    });
+  } catch (error: any) {
+    console.error("Error fetching channel posts:", error.message);
+    res.status(500).json({ message: "Failed to fetch channel posts", error: error.message });
+  }
 };
 
 export const getNewsById = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const { newsId } = req.params;
+  try {
+    const { newsId } = req.params;
 
-  const { userId } = getAuth(req);
-  let userObjectId: mongoose.Types.ObjectId | null = null;
-
-  if (userId) {
-    const user = await User.findOne({ clerkId: userId });
-    if (user) {
-      userObjectId = user._id as mongoose.Types.ObjectId;
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(newsId)) {
+      res.status(400).json({ message: "Invalid news ID" });
+      return;
     }
-  }
 
-  const news = await News.findById(newsId).populate({
-    path: "comments",
-    populate: {
-      path: "user",
-      select: "username firstName lastName profilePicture",
-    },
-  });
+    const { userId } = getAuth(req);
+    let userObjectId: mongoose.Types.ObjectId | null = null;
 
-  if (!news) {
-    res.status(404).json({ message: "News not found" });
-    return;
-  }
+    if (userId) {
+      const user = await User.findOne({ clerkId: userId });
+      if (user) {
+        userObjectId = user._id as mongoose.Types.ObjectId;
+      }
+    }
 
-  const likesCount = await Interaction.countDocuments({
-    news: newsId,
-    type: "like",
-  });
+    const news = await News.findById(newsId).populate({
+      path: "comments",
+      populate: {
+        path: "user",
+        select: "username firstName lastName profilePicture",
+      },
+    });
 
-  let isLiked = false;
-  if (userObjectId) {
-    const interaction = await Interaction.findOne({
-      user: userObjectId,
+    if (!news) {
+      res.status(404).json({ message: "News not found" });
+      return;
+    }
+
+    const likesCount = await Interaction.countDocuments({
       news: newsId,
       type: "like",
     });
-    isLiked = !!interaction;
+
+    let isLiked = false;
+    if (userObjectId) {
+      const interaction = await Interaction.findOne({
+        user: userObjectId,
+        news: newsId,
+        type: "like",
+      });
+      isLiked = !!interaction;
+    }
+
+    const newsObj = news.toObject() as any;
+
+    res.status(200).json({
+      news: {
+        ...newsObj,
+        likesCount,
+        isLiked,
+      },
+    });
+  } catch (error: any) {
+    console.error("Error fetching news by ID:", error.message);
+    res.status(500).json({ message: "Failed to fetch news", error: error.message });
   }
-
-  const newsObj = news.toObject() as any;
-  const normalizedNews = {
-    ...newsObj,
-    content: newsObj.content || newsObj.metadata?.news_text,
-    channelUsername: newsObj.channelUsername || newsObj.channel?.username,
-    channelProfilePic: newsObj.channelProfilePic || newsObj.channel?.channel_profile_picture,
-    mediaUrl: newsObj.mediaUrl || newsObj.channel?.media_url,
-    telegramId: newsObj.telegramId || (newsObj.message_id ? newsObj.message_id.toString() : undefined),
-    createdAt: newsObj.createdAt || (newsObj.channel?.date ? new Date(newsObj.channel.date) : undefined),
-    views: newsObj.views || newsObj.metadata?.views || 0,
-    likesCount,
-    isLiked,
-  };
-
-  res.status(200).json({
-    news: normalizedNews,
-  });
 };
 
 // Like a news item
@@ -259,35 +254,23 @@ export const likeNews = async (req: Request, res: Response): Promise<void> => {
     const { newsId } = req.params;
 
     if (!userId) {
-
       res.status(401).json({ message: "Unauthorized" });
       return;
     }
 
-    // Validate newsId
-    if (!newsId) {
-      res.status(400).json({ message: "News ID is required" });
+    if (!newsId || !mongoose.Types.ObjectId.isValid(newsId)) {
+      res.status(400).json({ message: "Valid News ID is required" });
       return;
     }
 
-    // Get MongoDB user from Clerk userId
     const user = await User.findOne({ clerkId: userId });
-
     if (!user) {
       res.status(404).json({ message: "User not found" });
       return;
     }
 
-    // Validate user has _id
-    if (!user._id) {
-      res.status(500).json({ message: "User record is invalid" });
-      return;
-    }
-
-    // Verify news exists
     const news = await News.findById(newsId);
     if (!news) {
-      console.log("News not found, returning 404");
       res.status(404).json({ message: "News not found" });
       return;
     }
@@ -299,13 +282,9 @@ export const likeNews = async (req: Request, res: Response): Promise<void> => {
     });
 
     if (existingInteraction) {
-      // Unlike
       await Interaction.findByIdAndDelete(existingInteraction._id);
-
       res.json({ message: "Unliked" });
     } else {
-      // Like
-
       await Interaction.create({
         user: user._id,
         news: newsId,
@@ -314,15 +293,10 @@ export const likeNews = async (req: Request, res: Response): Promise<void> => {
       res.json({ message: "Liked" });
     }
   } catch (error: any) {
-
-    console.error("Error details:", {
-      message: error.message,
-      code: error.code,
-      stack: error.stack
-    });
+    console.error("Error toggling like:", error.message);
     res.status(500).json({
       message: "Failed to like news",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -332,38 +306,87 @@ export const repostNews = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const { userId } = getAuth(req);
-  const { newsId } = req.params;
+  try {
+    const { userId } = getAuth(req);
+    const { newsId } = req.params;
 
-  if (!userId) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
 
-  // Get MongoDB user from Clerk userId
-  const user = await User.findOne({ clerkId: userId });
-  if (!user) {
-    res.status(404).json({ message: "User not found" });
-    return;
-  }
+    if (!newsId || !mongoose.Types.ObjectId.isValid(newsId)) {
+      res.status(400).json({ message: "Valid News ID is required" });
+      return;
+    }
 
-  const existingInteraction = await Interaction.findOne({
-    user: user._id,
-    news: newsId,
-    type: "repost",
-  });
+    const user = await User.findOne({ clerkId: userId });
+    if (!user) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
 
-  if (existingInteraction) {
-    // Un-repost
-    await Interaction.findByIdAndDelete(existingInteraction._id);
-    res.json({ message: "Unreposted" });
-  } else {
-    // Repost
-    await Interaction.create({
+    const existingInteraction = await Interaction.findOne({
       user: user._id,
       news: newsId,
       type: "repost",
     });
-    res.json({ message: "Reposted" });
+
+    if (existingInteraction) {
+      await Interaction.findByIdAndDelete(existingInteraction._id);
+      res.json({ message: "Unreposted" });
+    } else {
+      await Interaction.create({
+        user: user._id,
+        news: newsId,
+        type: "repost",
+      });
+      res.json({ message: "Reposted" });
+    }
+  } catch (error: any) {
+    console.error("Error toggling repost:", error.message);
+    res.status(500).json({
+      message: "Failed to repost news",
+      error: error.message,
+    });
+  }
+};
+
+// Search news
+export const searchNews = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const query = req.query.q as string;
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 10));
+    const skip = (page - 1) * limit;
+
+    if (!query || query.trim().length === 0) {
+      res.status(400).json({ message: "Search query is required" });
+      return;
+    }
+
+    const news = await News.find(
+      { $text: { $search: query } },
+      { score: { $meta: "textScore" } }
+    )
+      .sort({ score: { $meta: "textScore" } })
+      .skip(skip)
+      .limit(limit)
+      .select("-rawText");
+
+    const total = await News.countDocuments({ $text: { $search: query } });
+
+    res.status(200).json({
+      news,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+      totalNews: total,
+    });
+  } catch (error: any) {
+    console.error("Error searching news:", error.message);
+    res.status(500).json({ message: "Failed to search news", error: error.message });
   }
 };

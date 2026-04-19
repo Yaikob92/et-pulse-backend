@@ -1,33 +1,56 @@
 import mongoose, { Document, Schema } from "mongoose";
 
 export interface INews extends Document {
-  // Telegram Specific (Optional for CMS)
+  // Identity
   telegramId?: string;
+  sourceUrl?: string;
+  message_id?: number;
+  channel_id?: number;
+
+  // Channel info (flat)
+  channelName?: string;
   channelUsername?: string;
   channelProfilePic?: string;
-  mediaUrl?: string;
 
-  // CMS Specific
-  title?: string; // Optional because Telegram posts might not have titles
+  // Content
+  rawText?: string;
+  content: string;
+  title?: string;
   slug?: string;
   summary?: string;
-  content: string; // Used for both
+
+  // Media
+  mediaUrl?: string;
+  videoUrl?: string;
   coverImage?: string;
 
+  // CMS
   author?: mongoose.Types.ObjectId;
   category?: 'Politics' | 'Tech' | 'Sports' | 'Business' | 'World' | 'Entertainment' | 'Other';
   tags: string[];
+  label?: string;
 
   status: 'draft' | 'pending' | 'published' | 'rejected';
 
-  // Analytics Cache
+  // Analytics / Engagement
   views: number;
-  likes: number; // Cache for Interaction counts
-  bookmarks: number;
-  commentsCount: number; // Cache
+  likesCount: number;
+  commentsCount: number;
+  bookmarksCount: number;
+  forwards: number;
 
+  // Source metadata
+  source: 'telegram' | 'cms';
+  language?: string;
+  hasMedia?: boolean;
+  hasLinks?: boolean;
+  mediaType?: 'image' | 'video' | null;
+
+  // Dates
   scheduledFor?: Date;
   publishedAt?: Date;
+
+  comments?: mongoose.Types.ObjectId[];
 
   createdAt: Date;
   updatedAt: Date;
@@ -35,45 +58,39 @@ export interface INews extends Document {
 
 const newsSchema: Schema = new Schema(
   {
-    // Telegram Fields
+    // Identity
     telegramId: {
       type: String,
       unique: true,
-      sparse: true, // Allows null/undefined to be non-unique
+      sparse: true,
     },
-    channelUsername: {
-      type: String,
-      trim: true,
-    },
-    channelProfilePic: {
-      type: String,
-    },
-    mediaUrl: {
-      type: String,
-    },
+    sourceUrl: { type: String },
+    message_id: { type: Number },
+    channel_id: { type: Number },
 
-    // CMS Fields
-    title: {
-      type: String,
-      trim: true,
-    },
+    // Channel info (flat — no nesting)
+    channelName: { type: String, trim: true },
+    channelUsername: { type: String, trim: true },
+    channelProfilePic: { type: String },
+
+    // Content (flat)
+    rawText: { type: String },
+    content: { type: String, trim: true },
+    title: { type: String, trim: true },
     slug: {
       type: String,
       unique: true,
       sparse: true,
       trim: true,
     },
-    summary: {
-      type: String,
-      trim: true,
-    },
-    content: {
-      type: String,
-      trim: true,
-    },
-    coverImage: {
-      type: String,
-    },
+    summary: { type: String, trim: true },
+
+    // Media (flat)
+    mediaUrl: { type: String },
+    videoUrl: { type: String },
+    coverImage: { type: String },
+
+    // CMS
     author: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -83,59 +100,57 @@ const newsSchema: Schema = new Schema(
       enum: ['Politics', 'Tech', 'Sports', 'Business', 'World', 'Entertainment', 'Other'],
       default: 'Other',
     },
-    tags: [
-      {
-        type: String,
-        trim: true,
-      }
-    ],
+    tags: [{ type: String, trim: true }],
+    label: { type: String },
+
     status: {
       type: String,
       enum: ['draft', 'pending', 'published', 'rejected'],
       default: 'published',
     },
 
-    views: {
-      type: Number,
-      default: 0,
-    },
-    likes: {
-      type: Number,
-      default: 0,
-    },
-    bookmarks: {
-      type: Number,
-      default: 0,
-    },
-    commentsCount: {
-      type: Number,
-      default: 0
-    },
+    // Analytics / Engagement (cached counters)
+    views: { type: Number, default: 0 },
+    likesCount: { type: Number, default: 0 },
+    commentsCount: { type: Number, default: 0 },
+    bookmarksCount: { type: Number, default: 0 },
+    forwards: { type: Number, default: 0 },
 
-    scheduledFor: {
-      type: Date,
+    // Source metadata
+    source: {
+      type: String,
+      enum: ['telegram', 'cms'],
+      default: 'telegram',
     },
-    publishedAt: {
-      type: Date,
-      default: Date.now,
-    },
+    language: { type: String, default: 'am' },
+    hasMedia: { type: Boolean, default: false },
+    hasLinks: { type: Boolean, default: false },
+    mediaType: { type: String, enum: ['image', 'video', null], default: null },
 
-    comments: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Comment",
-      },
-    ],
+    // Dates
+    scheduledFor: { type: Date },
+    publishedAt: { type: Date, default: Date.now },
+    date: { type: String }, // Legacy: ISO string from scraper, kept for backward compat
+
+    // Relations
+    comments: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Comment",
+    }],
   },
-  { 
+  {
     timestamps: true,
-    strict: false // Allow scraped telegram fields that don't match the schema
+    strict: true, // Enforce schema — no more leaking arbitrary nested fields
   }
 );
 
-// Index for performant querying
+// Indexes for performant querying
 newsSchema.index({ status: 1, publishedAt: -1 });
 newsSchema.index({ category: 1 });
 newsSchema.index({ author: 1 });
+newsSchema.index({ channelUsername: 1, createdAt: -1 });
+newsSchema.index({ message_id: 1, channel_id: 1 }, { unique: true, sparse: true });
+newsSchema.index({ tags: 1 });
+newsSchema.index({ content: "text", title: "text" }); // Full-text search
 
 export default mongoose.model<INews>("News", newsSchema);
