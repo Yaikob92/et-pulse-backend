@@ -1,55 +1,50 @@
 import mongoose, { Document, Schema } from "mongoose";
 
-export interface INews extends Document {
-  // Identity
-  telegramId?: string;
-  sourceUrl?: string;
-  message_id?: number;
-  channel_id?: number;
+export interface IMedia {
+  type: 'image' | 'video' | 'document';
+  url: string;
+}
 
-  // Channel info (flat)
-  channelName?: string;
-  channelUsername?: string;
-  channelProfilePic?: string;
+export interface ISource {
+  platform: string;
+  url?: string;
+}
+
+export interface IEngagement {
+  views: number;
+  forwards: number;
+}
+
+export interface INews extends Document {
+  // Identity and Relational fields
+  telegram_channel_id?: number;
+  telegram_message_id?: number;
+  channel_id?: mongoose.Types.ObjectId; // Reference to Channel
 
   // Content
-  rawText?: string;
-  content: string;
   title?: string;
-  slug?: string;
-  summary?: string;
+  content: string;
+  raw_text?: string;
 
-  // Media
-  mediaUrl?: string;
-  videoUrl?: string;
-  coverImage?: string;
-
-  // CMS
-  author?: mongoose.Types.ObjectId;
   category?: 'Politics' | 'Tech' | 'Sports' | 'Business' | 'World' | 'Entertainment' | 'Other';
+  language?: string;
+
+  // Nested structures
+  engagement?: IEngagement;
+  media?: IMedia[];
+  source?: ISource;
+
   tags: string[];
-  label?: string;
+  status: 'published' | 'draft' | 'deleted' | 'pending' | 'rejected';
 
-  status: 'draft' | 'pending' | 'published' | 'rejected';
+  // Dates
+  published_at?: Date;
+  scraped_at?: Date;
 
-  // Analytics / Engagement
-  views: number;
+  // Cached counters and relationships
   likesCount: number;
   commentsCount: number;
   bookmarksCount: number;
-  forwards: number;
-
-  // Source metadata
-  source: 'telegram' | 'cms';
-  language?: string;
-  hasMedia?: boolean;
-  hasLinks?: boolean;
-  mediaType?: 'image' | 'video' | null;
-
-  // Dates
-  scheduledFor?: Date;
-  publishedAt?: Date;
-
   comments?: mongoose.Types.ObjectId[];
 
   createdAt: Date;
@@ -58,81 +53,61 @@ export interface INews extends Document {
 
 const newsSchema: Schema = new Schema(
   {
-    // Identity
-    telegramId: {
-      type: String,
-      unique: true,
-      sparse: true,
-    },
-    sourceUrl: { type: String },
-    message_id: { type: Number },
-    channel_id: { type: Number },
-
-    // Channel info (flat — no nesting)
-    channelName: { type: String, trim: true },
-    channelUsername: { type: String, trim: true },
-    channelProfilePic: { type: String },
-
-    // Content (flat)
-    rawText: { type: String },
-    content: { type: String, trim: true },
-    title: { type: String, trim: true },
-    slug: {
-      type: String,
-      unique: true,
-      sparse: true,
-      trim: true,
-    },
-    summary: { type: String, trim: true },
-
-    // Media (flat)
-    mediaUrl: { type: String },
-    videoUrl: { type: String },
-    coverImage: { type: String },
-
-    // CMS
-    author: {
+    // Identity and Relational fields
+    telegram_channel_id: { type: Number },
+    telegram_message_id: { type: Number },
+    channel_id: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "Channel",
     },
+
+    // Content
+    title: { type: String, trim: true },
+    content: { type: String, required: true, trim: true },
+    raw_text: { type: String },
+
     category: {
       type: String,
       enum: ['Politics', 'Tech', 'Sports', 'Business', 'World', 'Entertainment', 'Other'],
       default: 'Other',
     },
-    tags: [{ type: String, trim: true }],
-    label: { type: String },
+    language: { type: String, default: 'am' },
 
+    // Nested structures
+    engagement: {
+      views: { type: Number, default: 0 },
+      forwards: { type: Number, default: 0 },
+    },
+    media: [
+      {
+        type: {
+          type: String,
+          enum: ['image', 'video', 'document'],
+          required: true,
+        },
+        url: { type: String, required: true },
+      },
+    ],
+    source: {
+      platform: { type: String, default: 'telegram' },
+      url: { type: String },
+    },
+
+    tags: [{ type: String, trim: true }],
     status: {
       type: String,
-      enum: ['draft', 'pending', 'published', 'rejected'],
+      enum: ['published', 'draft', 'deleted', 'pending', 'rejected'],
       default: 'published',
     },
 
-    // Analytics / Engagement (cached counters)
-    views: { type: Number, default: 0 },
+    // Dates
+    published_at: { type: Date, default: Date.now },
+    scraped_at: { type: Date, default: Date.now },
+
+    // Cached counters and relationships
     likesCount: { type: Number, default: 0 },
     commentsCount: { type: Number, default: 0 },
     bookmarksCount: { type: Number, default: 0 },
-    forwards: { type: Number, default: 0 },
-
-    // Source metadata
-    source: {
-      type: String,
-      enum: ['telegram', 'cms'],
-      default: 'telegram',
-    },
-    language: { type: String, default: 'am' },
-    hasMedia: { type: Boolean, default: false },
-    hasLinks: { type: Boolean, default: false },
-    mediaType: { type: String, enum: ['image', 'video', null], default: null },
-
-    // Dates
-    scheduledFor: { type: Date },
-    publishedAt: { type: Date, default: Date.now },
-    date: { type: String }, // Legacy: ISO string from scraper, kept for backward compat
-
-    // Relations
     comments: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: "Comment",
@@ -140,16 +115,15 @@ const newsSchema: Schema = new Schema(
   },
   {
     timestamps: true,
-    strict: true, // Enforce schema — no more leaking arbitrary nested fields
+    strict: true,
   }
 );
 
 // Indexes for performant querying
-newsSchema.index({ status: 1, publishedAt: -1 });
+newsSchema.index({ status: 1, published_at: -1 });
 newsSchema.index({ category: 1 });
-newsSchema.index({ author: 1 });
-newsSchema.index({ channelUsername: 1, createdAt: -1 });
-newsSchema.index({ message_id: 1, channel_id: 1 }, { unique: true, sparse: true });
+newsSchema.index({ channel_id: 1, createdAt: -1 });
+newsSchema.index({ telegram_message_id: 1, telegram_channel_id: 1 }, { unique: true, sparse: true });
 newsSchema.index({ tags: 1 });
 newsSchema.index({ content: "text", title: "text" }); // Full-text search
 

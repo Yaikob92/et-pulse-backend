@@ -1,4 +1,5 @@
 import News from "../models/News.js";
+import Channel from "../models/Channel.js";
 import { Request, Response } from "express";
 import Interaction from "../models/Interaction.js";
 import { getAuth } from "@clerk/express";
@@ -48,7 +49,7 @@ export const getAllNews = async (
     }
 
     pipeline.push(
-      { $sort: { publishedAt: -1, createdAt: -1 } },
+      { $sort: { published_at: -1, createdAt: -1 } },
       { $skip: skip },
       { $limit: limit },
       // Lookup likes from Interaction collection
@@ -79,18 +80,23 @@ export const getAllNews = async (
             : false,
         },
       },
-      { $project: { likeInteractions: 0, rawText: 0 } }
+      { $project: { likeInteractions: 0, raw_text: 0 } }
     );
 
     const news = await News.aggregate(pipeline);
 
-    const populatedNews = await News.populate(news, {
-      path: "comments",
-      populate: {
-        path: "user",
-        select: "username firstName lastName profilePicture",
+    const populatedNews = await News.populate(news, [
+      {
+        path: "comments",
+        populate: {
+          path: "user",
+          select: "username firstName lastName profilePicture",
+        },
       },
-    });
+      {
+        path: "channel_id",
+      },
+    ]);
 
     const total = Object.keys(matchFilter).length > 0
       ? await News.countDocuments(matchFilter)
@@ -122,6 +128,12 @@ export const getChannelsPost = async (
     const { username } = req.params;
     const collectionName = Interaction.collection.name;
 
+    const channel = await Channel.findOne({ username });
+    if (!channel) {
+      res.status(404).json({ message: "Channel not found" });
+      return;
+    }
+
     const { userId } = getAuth(req);
     let userObjectId: mongoose.Types.ObjectId | null = null;
 
@@ -133,8 +145,8 @@ export const getChannelsPost = async (
     }
 
     const news = await News.aggregate([
-      { $match: { channelUsername: username } },
-      { $sort: { publishedAt: -1, createdAt: -1 } },
+      { $match: { channel_id: channel._id } },
+      { $sort: { published_at: -1, createdAt: -1 } },
       { $skip: skip },
       { $limit: limit },
       {
@@ -164,13 +176,17 @@ export const getChannelsPost = async (
             : false,
         },
       },
-      { $project: { likeInteractions: 0, rawText: 0 } },
+      { $project: { likeInteractions: 0, raw_text: 0 } },
     ]);
 
-    const total = await News.countDocuments({ channelUsername: username });
+    const populatedNews = await News.populate(news, {
+      path: "channel_id"
+    });
+
+    const total = await News.countDocuments({ channel_id: channel._id });
 
     res.status(200).json({
-      news,
+      news: populatedNews,
       currentPage: page,
       totalPages: Math.ceil(total / limit),
       totalNews: total,
@@ -204,13 +220,15 @@ export const getNewsById = async (
       }
     }
 
-    const news = await News.findById(newsId).populate({
-      path: "comments",
-      populate: {
-        path: "user",
-        select: "username firstName lastName profilePicture",
-      },
-    });
+    const news = await News.findById(newsId)
+      .populate("channel_id")
+      .populate({
+        path: "comments",
+        populate: {
+          path: "user",
+          select: "username firstName lastName profilePicture",
+        },
+      });
 
     if (!news) {
       res.status(404).json({ message: "News not found" });
@@ -375,7 +393,8 @@ export const searchNews = async (
       .sort({ score: { $meta: "textScore" } })
       .skip(skip)
       .limit(limit)
-      .select("-rawText");
+      .select("-raw_text")
+      .populate("channel_id");
 
     const total = await News.countDocuments({ $text: { $search: query } });
 
