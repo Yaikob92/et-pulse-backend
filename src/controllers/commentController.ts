@@ -86,26 +86,16 @@ export const addComment = async (
       return;
     }
 
-    const session = await mongoose.startSession();
     let comment: any;
+    const [created] = await Comment.insertMany([
+      { user: user._id, news: newsId, content: content.trim() }
+    ]);
+    comment = created;
 
-    try {
-      await session.withTransaction(async () => {
-        const [created] = await Comment.insertMany(
-          [{ user: user._id, news: newsId, content: content.trim() }],
-          { session }
-        );
-        comment = created;
-
-        await News.findByIdAndUpdate(
-          newsId,
-          { $push: { comments: comment._id }, $inc: { commentsCount: 1 } },
-          { session }
-        );
-      });
-    } finally {
-      await session.endSession();
-    }
+    await News.findByIdAndUpdate(
+      newsId,
+      { $push: { comments: comment._id }, $inc: { commentsCount: 1 } }
+    );
 
     res.status(201).json(comment);
   } catch (error: any) {
@@ -165,26 +155,16 @@ export const addReply = async (
 
     const newsId = parentComment.news;
 
-    const session = await mongoose.startSession();
     let reply: any;
+    const [created] = await Comment.insertMany([
+      { user: user._id, news: newsId, content: content.trim(), parentComment: commentId }
+    ]);
+    reply = created;
 
-    try {
-      await session.withTransaction(async () => {
-        const [created] = await Comment.insertMany(
-          [{ user: user._id, news: newsId, content: content.trim(), parentComment: commentId }],
-          { session }
-        );
-        reply = created;
-
-        await News.findByIdAndUpdate(
-          newsId,
-          { $push: { comments: reply._id }, $inc: { commentsCount: 1 } },
-          { session }
-        );
-      });
-    } finally {
-      await session.endSession();
-    }
+    await News.findByIdAndUpdate(
+      newsId,
+      { $push: { comments: reply._id }, $inc: { commentsCount: 1 } }
+    );
 
     res.status(201).json(reply);
   } catch (error: any) {

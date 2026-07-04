@@ -1,4 +1,5 @@
-import mongoose, { Document, Schema } from "mongoose";
+import { Document, Schema } from "mongoose";
+import { telegramDb } from "../config/db.js";
 
 export interface IChannel extends Document {
   telegram_channel_id: number;
@@ -7,8 +8,8 @@ export interface IChannel extends Document {
   profile_pic?: string;
   description?: string;
   subscribers_count: number;
-  createdAt: Date;
-  updatedAt: Date;
+  created_at: Date;
+  updated_at: Date;
 }
 
 const channelSchema: Schema = new Schema(
@@ -43,12 +44,9 @@ const channelSchema: Schema = new Schema(
     },
   },
   {
-    timestamps: true,
+    timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
     strict: true,
   }
 );
 
-channelSchema.index({ username: 1 });
-channelSchema.index({ telegram_channel_id: 1 });
-
-export default mongoose.model<IChannel>("Channel", channelSchema);
+export default telegramDb.model<IChannel>("Channel", channelSchema);

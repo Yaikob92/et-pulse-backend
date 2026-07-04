@@ -24,10 +24,21 @@ export const getBookMark = async (
     }
 
     const bookMarks = await BookMarks.find({ user: user?._id })
-      .populate("news")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
-    res.status(200).json({ bookMarks });
+    const newsIds = bookMarks.map((b) => b.news).filter(Boolean);
+    const newsItems = await News.find({ _id: { $in: newsIds } })
+      .populate("channel_id")
+      .lean();
+
+    const newsMap = new Map(newsItems.map((item) => [item._id.toString(), item]));
+    const populatedBookMarks = bookMarks.map((b) => ({
+      ...b,
+      news: b.news ? newsMap.get(b.news.toString()) || null : null,
+    }));
+
+    res.status(200).json({ bookMarks: populatedBookMarks });
   } catch (error: any) {
     console.error("Error fetching bookmarks:", error.message);
     res.status(500).json({ message: "Failed to fetch bookmarks", error: error.message });

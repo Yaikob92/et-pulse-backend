@@ -58,7 +58,7 @@ export const deleteUserRelatedData = async (clerkId: string) => {
     console.log(`🔖 Deleting user bookmarks...`);
     const userBookmarks = await Bookmarks.find({ user: userId });
     for (const bookmark of userBookmarks) {
-        await News.findByIdAndUpdate(bookmark.news, { $inc: { bookmarks: -1 } });
+        await News.findByIdAndUpdate(bookmark.news, { $inc: { bookmarksCount: -1 } });
     }
     await Bookmarks.deleteMany({ user: userId });
     console.log(`✅ Deleted ${userBookmarks.length} bookmarks`);
@@ -68,7 +68,7 @@ export const deleteUserRelatedData = async (clerkId: string) => {
     const userInteractions = await Interaction.find({ user: userId });
     for (const interaction of userInteractions) {
         if (interaction.type === 'like') {
-            await News.findByIdAndUpdate(interaction.news, { $inc: { likes: -1 } });
+            await News.findByIdAndUpdate(interaction.news, { $inc: { likesCount: -1 } });
         }
         // Handle other types if necessary
     }

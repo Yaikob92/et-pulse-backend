@@ -250,9 +250,9 @@ export const createNews = async (req: Request, res: Response) => {
       coverImage,
       tags: Array.isArray(tags) ? tags.map((t: string) => t.trim()).filter(Boolean) : [],
       author: currentUser._id,
-      source: "cms",
+      source: { name: "cms" },
       status: "published",
-      publishedAt: new Date(),
+      published_at: new Date(),
     });
 
     await news.save();

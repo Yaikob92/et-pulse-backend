@@ -5,6 +5,7 @@ import Interaction from "../models/Interaction.js";
 import { getAuth } from "@clerk/express";
 import User from "../models/User.js";
 import mongoose from "mongoose";
+import Comment from "../models/Comment.js";
 
 // Get all news with pagination, filtering, and search
 export const getAllNews = async (
@@ -52,51 +53,50 @@ export const getAllNews = async (
       { $sort: { published_at: -1, createdAt: -1 } },
       { $skip: skip },
       { $limit: limit },
-      // Lookup likes from Interaction collection
-      {
-        $lookup: {
-          from: collectionName,
-          let: { newsId: "$_id" },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ["$news", "$$newsId"] },
-                    { $eq: ["$type", "like"] },
-                  ],
-                },
-              },
-            },
-          ],
-          as: "likeInteractions",
-        },
-      },
-      {
-        $addFields: {
-          likesCount: { $size: "$likeInteractions" },
-          isLiked: userObjectId
-            ? { $in: [userObjectId, "$likeInteractions.user"] }
-            : false,
-        },
-      },
-      { $project: { likeInteractions: 0, raw_text: 0 } }
+      { $project: { raw_text: 0 } }
     );
 
     const news = await News.aggregate(pipeline);
 
-    const populatedNews = await News.populate(news, [
-      {
-        path: "comments",
-        populate: {
-          path: "user",
-          select: "username firstName lastName profilePicture",
-        },
-      },
-      {
-        path: "channel_id",
-      },
-    ]);
+    // Populate channel_id since it's on telegramDb connection
+    await News.populate(news, { path: "channel_id" });
+
+    // Gather and populate comments from Et-Pulse
+    const commentIds = news.flatMap((n) => n.comments || []).filter(Boolean);
+    const commentsList = await Comment.find({ _id: { $in: commentIds } })
+      .populate("user", "username firstName lastName profilePicture")
+      .lean();
+    const commentsMap = new Map(commentsList.map((c) => [c._id.toString(), c]));
+
+    // Fetch and populate like interactions in-memory from Et-Pulse
+    const newsIds = news.map((n) => n._id);
+    const likeInteractions = await Interaction.find({
+      news: { $in: newsIds },
+      type: "like",
+    }).lean();
+
+    const populatedNews = news.map((n) => {
+      const itemInteractions = likeInteractions.filter(
+        (i) => i.news.toString() === n._id.toString()
+      );
+      const likesCount = itemInteractions.length;
+      const isLiked = userObjectId
+        ? itemInteractions.some(
+            (i) => i.user.toString() === userObjectId!.toString()
+          )
+        : false;
+
+      const itemComments = (n.comments || [])
+        .map((cid: any) => commentsMap.get(cid.toString()))
+        .filter(Boolean);
+
+      return {
+        ...n,
+        likesCount,
+        isLiked,
+        comments: itemComments,
+      };
+    });
 
     const total = Object.keys(matchFilter).length > 0
       ? await News.countDocuments(matchFilter)
@@ -149,38 +149,34 @@ export const getChannelsPost = async (
       { $sort: { published_at: -1, createdAt: -1 } },
       { $skip: skip },
       { $limit: limit },
-      {
-        $lookup: {
-          from: collectionName,
-          let: { newsId: "$_id" },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ["$news", "$$newsId"] },
-                    { $eq: ["$type", "like"] },
-                  ],
-                },
-              },
-            },
-          ],
-          as: "likeInteractions",
-        },
-      },
-      {
-        $addFields: {
-          likesCount: { $size: "$likeInteractions" },
-          isLiked: userObjectId
-            ? { $in: [userObjectId, "$likeInteractions.user"] }
-            : false,
-        },
-      },
-      { $project: { likeInteractions: 0, raw_text: 0 } },
+      { $project: { raw_text: 0 } },
     ]);
 
-    const populatedNews = await News.populate(news, {
-      path: "channel_id"
+    await News.populate(news, { path: "channel_id" });
+
+    // Fetch and populate like interactions in-memory from Et-Pulse
+    const newsIds = news.map((n) => n._id);
+    const likeInteractions = await Interaction.find({
+      news: { $in: newsIds },
+      type: "like",
+    }).lean();
+
+    const populatedNews = news.map((n) => {
+      const itemInteractions = likeInteractions.filter(
+        (i) => i.news.toString() === n._id.toString()
+      );
+      const likesCount = itemInteractions.length;
+      const isLiked = userObjectId
+        ? itemInteractions.some(
+            (i) => i.user.toString() === userObjectId!.toString()
+          )
+        : false;
+
+      return {
+        ...n,
+        likesCount,
+        isLiked,
+      };
     });
 
     const total = await News.countDocuments({ channel_id: channel._id });
@@ -220,20 +216,17 @@ export const getNewsById = async (
       }
     }
 
-    const news = await News.findById(newsId)
-      .populate("channel_id")
-      .populate({
-        path: "comments",
-        populate: {
-          path: "user",
-          select: "username firstName lastName profilePicture",
-        },
-      });
+    const news = await News.findById(newsId).populate("channel_id");
 
     if (!news) {
       res.status(404).json({ message: "News not found" });
       return;
     }
+
+    // Populate comments manually since News is on telegramDb and Comment is on Et-Pulse db
+    const comments = await Comment.find({ _id: { $in: news.comments || [] } })
+      .populate("user", "username firstName lastName profilePicture")
+      .lean();
 
     const likesCount = await Interaction.countDocuments({
       news: newsId,
@@ -251,6 +244,7 @@ export const getNewsById = async (
     }
 
     const newsObj = news.toObject() as any;
+    newsObj.comments = comments;
 
     res.status(200).json({
       news: {

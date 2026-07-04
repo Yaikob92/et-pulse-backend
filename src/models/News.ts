@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from "mongoose";
+import { telegramDb } from "../config/db.js";
 
 export interface IMedia {
   type: 'image' | 'video' | 'document';
@@ -6,7 +7,7 @@ export interface IMedia {
 }
 
 export interface ISource {
-  platform: string;
+  name: string;
   url?: string;
 }
 
@@ -89,7 +90,7 @@ const newsSchema: Schema = new Schema(
       },
     ],
     source: {
-      platform: { type: String, default: 'telegram' },
+      name: { type: String, default: 'telegram' },
       url: { type: String },
     },
 
@@ -127,4 +128,4 @@ newsSchema.index({ telegram_message_id: 1, telegram_channel_id: 1 }, { unique: t
 newsSchema.index({ tags: 1 });
 newsSchema.index({ content: "text", title: "text" }); // Full-text search
 
-export default mongoose.model<INews>("News", newsSchema);
+export default telegramDb.model<INews>("News", newsSchema);
